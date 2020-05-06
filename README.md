@@ -3,7 +3,7 @@
 ### Anaconda
 Only Mac and Unix environments currently supported
 
-1. ```conda env create -f {os}_cs182.yaml```, where os can be ``unix`` or ``mac``
+1. ```conda env create -f cs182_{os}.yaml```, where os can be ``unix`` or ``mac``
 2. ```pip install -e ./baselines```
 
 ## Training
