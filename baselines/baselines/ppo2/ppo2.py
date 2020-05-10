@@ -22,7 +22,7 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95,
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
             save_interval=0, load_path=None, model_fn=None, update_fn=None, init_fn=None, mpi_rank_weight=1, comm=None,
-            test=False, **network_kwargs):
+            test=False, augment=False, **network_kwargs):
     '''
     Learn policy using PPO algorithm (https://arxiv.org/abs/1707.06347)
 
@@ -113,7 +113,7 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
         print("loading")
         model.load(load_path)
     # Instantiate the runner object
-    runner = Runner(env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam)
+    runner = Runner(env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam, augment=augment)
     if eval_env is not None:
         eval_runner = Runner(env = eval_env, model = model, nsteps = nsteps, gamma = gamma, lam= lam)
 
@@ -128,6 +128,7 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
     tfirststart = time.perf_counter()
 
     nupdates = total_timesteps//nbatch
+    print(nupdates)
 
     # Save tracking
     best_avg_rew = float('-inf')
@@ -157,8 +158,9 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
 
         # only care about episode results, don't want to calculate losses
         if test:
-            logger.logkv('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
             if update % log_interval == 0 or update == 1:
+                logger.logkv('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
+                logger.logkv("misc/total_timesteps", update * nbatch)
                 logger.dumpkvs()
             continue
         # Here what we're going to do is for each minibatch calculate the loss and append it.

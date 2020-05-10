@@ -10,8 +10,8 @@ class Runner(AbstractEnvRunner):
     run():
     - Make a mini batch
     """
-    def __init__(self, *, env, model, nsteps, gamma, lam):
-        super().__init__(env=env, model=model, nsteps=nsteps)
+    def __init__(self, *, env, model, nsteps, gamma, lam, augment=False):
+        super().__init__(env=env, model=model, nsteps=nsteps, augment=augment)
         # Lambda used in GAE (General Advantage Estimation)
         self.lam = lam
         # Discount rate
@@ -26,6 +26,17 @@ class Runner(AbstractEnvRunner):
         for _ in range(self.nsteps):
             # Given observations, get action value and neglopacs
             # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
+            # @kaahan: modify obs s.t. its a crop  of the padded image
+            if self.augment:
+                import random
+                # pad observation 4 pixels in any direction, extending the border
+                obs = self.obs[0]
+                h, w, _ = obs.shape
+                obs = np.pad(obs, pad_width=((4, 4), (4, 4), (0, 0)), mode='edge')
+                x = random.randint(0, obs.shape[1] - w)
+                y = random.randint(0, obs.shape[0] - h)
+                obs = np.expand_dims(obs[y:y + h, x:x + w, :], 0)
+                self.obs = obs
             actions, values, self.states, neglogpacs = self.model.step(self.obs, S=self.states, M=self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
@@ -40,6 +51,7 @@ class Runner(AbstractEnvRunner):
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
             mb_rewards.append(rewards)
+
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)

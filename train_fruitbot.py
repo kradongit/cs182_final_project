@@ -12,6 +12,8 @@ import os
 from datetime import datetime
 
 from baselines.ppo2 import ppo2
+from baselines.a2c import a2c
+from baselines.acktr import acktr
 from baselines.common.models import build_impala_cnn
 from baselines.common.models import nature_cnn
 from baselines.common.vec_env import (
@@ -49,16 +51,27 @@ def main():
 
     # create (vectorized) procgen environment
     logger.info("creating environment")
-    venv = ProcgenEnv(num_envs=cfg.TEST.NUM_ENVS,
+    venv = ProcgenEnv(num_envs=cfg.TRAIN.NUM_ENVS,
                       env_name="fruitbot",
-                      num_levels=cfg.TEST.NUM_LEVELS,
-                      start_level=cfg.TEST.LEVEL_SEED,
+                      num_levels=cfg.TRAIN.NUM_LEVELS,
+                      start_level=cfg.TRAIN.LEVEL_SEED,
                       distribution_mode="easy")
     venv = VecExtractDictObs(venv, "rgb")
     venv = VecMonitor(
         venv=venv, filename=None, keep_buf=100,
     )
     venv = VecNormalize(venv=venv, ob=False)
+
+    test_venv = ProcgenEnv(num_envs=cfg.TEST.NUM_ENVS,
+                      env_name="fruitbot",
+                      num_levels=cfg.TEST.NUM_LEVELS,
+                      start_level=cfg.TEST.LEVEL_SEED,
+                      distribution_mode="easy")
+    test_venv = VecExtractDictObs(test_venv, "rgb")
+    test_venv = VecMonitor(
+        venv=test_venv, filename=None, keep_buf=100,
+    )
+    test_venv = VecNormalize(venv=test_venv, ob=False)
 
     # create tensorflow session
     logger.info("creating tf session")
@@ -77,25 +90,49 @@ def main():
 
     # training
     logger.info("training")
-    ppo2.learn(
-        env=venv,
-        network=conv_fn,
-        total_timesteps=cfg.TRAIN.TOTAL_TIMESTEPS,
-        save_interval=5,
-        nsteps=cfg.TRAIN.BATCH_SIZE,
-        nminibatches=cfg.TRAIN.MINIBATCHES,
-        lam=cfg.TRAIN.LAM,
-        gamma=cfg.TRAIN.GAMMA,
-        noptepochs=cfg.TRAIN.NUM_EPOCHS,
-        log_interval=1,
-        clip_vf=cfg.TRAIN.USE_VF_CLIPPING,
-        lr=cfg.TRAIN.LR,
-        cliprange=cfg.TRAIN.CLIP_RANGE,
-        update_fn=None,
-        init_fn=None,
-        vf_coef=0.5,
-        max_grad_norm=0.5,
-    )
+    if cfg.TRAIN.POLICY == "A2C":
+        a2c.learn(
+            env=venv,
+            network=conv_fn,
+            total_timesteps=cfg.TRAIN.TOTAL_TIMESTEPS,
+            nsteps=cfg.TRAIN.BATCH_SIZE,
+            log_interval=1,
+            eval_env=test_venv,
+            augment=cfg.TRAIN.AUGMENT
+        )
+    elif cfg.TRAIN.POLICY == "ACKTR":
+        acktr.learn(
+            env=venv,
+            network=conv_fn,
+            total_timesteps=cfg.TRAIN.TOTAL_TIMESTEPS,
+            nsteps=cfg.TRAIN.BATCH_SIZE,
+            log_interval=1,
+            eval_env=test_venv,
+            augment=cfg.TRAIN.AUGMENT,
+            seed=None
+        )
+    elif cfg.TRAIN.POLICY == "PPO":
+        ppo2.learn(
+            env=venv,
+            eval_env=test_venv,
+            network=conv_fn,
+            total_timesteps=cfg.TRAIN.TOTAL_TIMESTEPS,
+            save_interval=5,
+            nsteps=cfg.TRAIN.BATCH_SIZE,
+            nminibatches=cfg.TRAIN.MINIBATCHES,
+            lam=cfg.TRAIN.LAM,
+            gamma=cfg.TRAIN.GAMMA,
+            noptepochs=cfg.TRAIN.NUM_EPOCHS,
+            log_interval=1,
+            clip_vf=cfg.TRAIN.USE_VF_CLIPPING,
+            lr=cfg.TRAIN.LR,
+            cliprange=cfg.TRAIN.CLIP_RANGE,
+            update_fn=None,
+            init_fn=None,
+            vf_coef=0.5,
+            max_grad_norm=0.5,
+            augment=cfg.TRAIN.AUGMENT
+        )
 
 
 if __name__ == '__main__':

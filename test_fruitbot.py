@@ -88,9 +88,9 @@ def main():
     ppo2.learn(
         env=venv,
         network=conv_fn,
-        total_timesteps=cfg.TRAIN.TOTAL_TIMESTEPS,
+        total_timesteps=cfg.TEST.TIMESTEPS,
         save_interval=0,
-        nsteps=cfg.TRAIN.BATCH_SIZE,
+        nsteps=cfg.TEST.BATCH_SIZE,
         nminibatches=cfg.TRAIN.MINIBATCHES,
         lam=cfg.TRAIN.LAM,
         gamma=cfg.TRAIN.GAMMA,

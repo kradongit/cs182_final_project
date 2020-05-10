@@ -1,6 +1,8 @@
 import time
 import functools
 import tensorflow as tf
+import os.path as osp
+import os
 
 from baselines import logger
 
@@ -15,6 +17,7 @@ from baselines.ppo2.ppo2 import safemean
 from collections import deque
 
 from tensorflow import losses
+
 
 class Model(object):
 
@@ -132,6 +135,8 @@ def learn(
     gamma=0.99,
     log_interval=100,
     load_path=None,
+    eval_env=None,
+    augment=False,
     **network_kwargs):
 
     '''
@@ -196,8 +201,12 @@ def learn(
         model.load(load_path)
 
     # Instantiate the runner object
-    runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
+    runner = Runner(env, model, nsteps=nsteps, gamma=gamma, augment=augment)
     epinfobuf = deque(maxlen=100)
+
+    if eval_env is not None:
+        eval_runner = Runner(env=eval_env, model=model, nsteps=nsteps, gamma=gamma)
+        eval_epinfobuf = deque(maxlen=100)
 
     # Calculate the batch_size
     nbatch = nenvs*nsteps
@@ -205,11 +214,18 @@ def learn(
     # Start total timer
     tstart = time.time()
 
+    # keep track of best model
+    best_rew = float('-inf')
+
     for update in range(1, total_timesteps//nbatch+1):
         # Get mini batch of experiences
+        if update % log_interval == 0: logger.info('Stepping environment...')
         obs, states, rewards, masks, actions, values, epinfos = runner.run()
         epinfobuf.extend(epinfos)
-
+        if eval_env is not None:
+            eval_obs, eval_states, eval_returns, eval_masks, eval_actions, eval_values, eval_epinfos = eval_runner.run() #pylint: disable=E0632
+            eval_epinfobuf.extend(eval_epinfos)
+        if update % log_interval == 0: logger.info('Done.')
         policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values)
         nseconds = time.time()-tstart
 
@@ -226,7 +242,17 @@ def learn(
             logger.record_tabular("value_loss", float(value_loss))
             logger.record_tabular("explained_variance", float(ev))
             logger.record_tabular("eprewmean", safemean([epinfo['r'] for epinfo in epinfobuf]))
+            if eval_env is not None:
+                logger.record_tabular('eval_eprewmean', safemean([epinfo['r'] for epinfo in eval_epinfobuf]))
+                logger.record_tabular('eval_eplenmean', safemean([epinfo['l'] for epinfo in eval_epinfobuf]))
             logger.record_tabular("eplenmean", safemean([epinfo['l'] for epinfo in epinfobuf]))
             logger.dump_tabular()
+        if safemean([epinfo['r'] for epinfo in epinfobuf]) > best_rew and logger.get_dir():
+            best_rew = safemean([epinfo['r'] for epinfo in epinfobuf])
+            checkdir = osp.join(logger.get_dir(), 'checkpoints')
+            os.makedirs(checkdir, exist_ok=True)
+            savepath = osp.join(checkdir, 'best.ckpt')
+            print(f"Best model w/ rew {best_rew}. Saving to", savepath)
+            model.save(savepath)
     return model
 

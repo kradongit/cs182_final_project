@@ -1,4 +1,5 @@
 import os.path as osp
+import os
 import time
 import functools
 import tensorflow as tf
@@ -94,7 +95,8 @@ class Model(object):
 
 def learn(network, env, seed, total_timesteps=int(40e6), gamma=0.99, log_interval=100, nprocs=32, nsteps=20,
                  ent_coef=0.01, vf_coef=0.5, vf_fisher_coef=1.0, lr=0.25, max_grad_norm=0.5,
-                 kfac_clip=0.001, save_interval=None, lrschedule='linear', load_path=None, is_async=True, **network_kwargs):
+                 kfac_clip=0.001, eval_env=None, save_interval=None, lrschedule='linear', load_path=None, is_async=True,
+          augment=False, **network_kwargs):
     set_global_seeds(seed)
 
 
@@ -119,8 +121,13 @@ def learn(network, env, seed, total_timesteps=int(40e6), gamma=0.99, log_interva
     if load_path is not None:
         model.load(load_path)
 
-    runner = Runner(env, model, nsteps=nsteps, gamma=gamma)
+    runner = Runner(env, model, nsteps=nsteps, gamma=gamma, augment=augment)
     epinfobuf = deque(maxlen=100)
+
+    if eval_env is not None:
+        eval_runner = Runner(env=eval_env, model=model, nsteps=nsteps, gamma=gamma)
+        eval_epinfobuf = deque(maxlen=100)
+
     nbatch = nenvs*nsteps
     tstart = time.time()
     coord = tf.train.Coordinator()
@@ -129,9 +136,14 @@ def learn(network, env, seed, total_timesteps=int(40e6), gamma=0.99, log_interva
     else:
         enqueue_threads = []
 
+    best_rew = float('-inf')
     for update in range(1, total_timesteps//nbatch+1):
         obs, states, rewards, masks, actions, values, epinfos = runner.run()
         epinfobuf.extend(epinfos)
+        if eval_env is not None:
+            eval_obs, eval_states, eval_returns, eval_masks, eval_actions, eval_values, eval_epinfos = eval_runner.run() #pylint: disable=E0632
+            eval_epinfobuf.extend(eval_epinfos)
+
         policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values)
         model.old_obs = obs
         nseconds = time.time()-tstart
@@ -147,12 +159,17 @@ def learn(network, env, seed, total_timesteps=int(40e6), gamma=0.99, log_interva
             logger.record_tabular("explained_variance", float(ev))
             logger.record_tabular("eprewmean", safemean([epinfo['r'] for epinfo in epinfobuf]))
             logger.record_tabular("eplenmean", safemean([epinfo['l'] for epinfo in epinfobuf]))
+            if eval_env is not None:
+                logger.record_tabular('eval_eprewmean', safemean([epinfo['r'] for epinfo in eval_epinfobuf]))
+                logger.record_tabular('eval_eplenmean', safemean([epinfo['l'] for epinfo in eval_epinfobuf]))
             logger.dump_tabular()
-
-        if save_interval and (update % save_interval == 0 or update == 1) and logger.get_dir():
-            savepath = osp.join(logger.get_dir(), 'checkpoint%.5i'%update)
-            print('Saving to', savepath)
-            model.save(savepath)
+            if safemean([epinfo['r'] for epinfo in epinfobuf]) > best_rew and logger.get_dir():
+                best_rew = safemean([epinfo['r'] for epinfo in epinfobuf])
+                checkdir = osp.join(logger.get_dir(), 'checkpoints')
+                os.makedirs(checkdir, exist_ok=True)
+                savepath = osp.join(checkdir, 'best.ckpt')
+                print(f"Best model w/ rew {best_rew}. Saving to", savepath)
+                model.save(savepath)
     coord.request_stop()
     coord.join(enqueue_threads)
     return model

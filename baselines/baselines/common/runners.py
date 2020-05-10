@@ -2,7 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 class AbstractEnvRunner(ABC):
-    def __init__(self, *, env, model, nsteps):
+    def __init__(self, *, env, model, nsteps, augment=False):
         self.env = env
         self.model = model
         self.nenv = nenv = env.num_envs if hasattr(env, 'num_envs') else 1
@@ -12,6 +12,7 @@ class AbstractEnvRunner(ABC):
         self.nsteps = nsteps
         self.states = model.initial_state
         self.dones = [False for _ in range(nenv)]
+        self.augment = augment
 
     @abstractmethod
     def run(self):

@@ -25,12 +25,16 @@ _C.TRAIN.MINIBATCHES = 1
 _C.TRAIN.NUM_EPOCHS = 3
 # total number of actions over all episodes / epochs
 _C.TRAIN.TOTAL_TIMESTEPS = 1_000_000
+_C.TRAIN.POLICY = ""
+_C.TRAIN.AUGMENT = False
 
 # testing defaults
 _C.TEST = CN()
 _C.TEST.NUM_ENVS = 1
 _C.TEST.NUM_LEVELS = 0
 _C.TEST.LEVEL_SEED = 0
+_C.TEST.TIMESTEPS = 100_000
+_C.TEST.BATCH_SIZE = _C.TRAIN.BATCH_SIZE
 
 _C.EXPERIMENT_NAME = "openai_baseline"
 

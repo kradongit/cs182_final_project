@@ -12,8 +12,8 @@ class Runner(AbstractEnvRunner):
     run():
     - Make a mini batch of experiences
     """
-    def __init__(self, env, model, nsteps=5, gamma=0.99):
-        super().__init__(env=env, model=model, nsteps=nsteps)
+    def __init__(self, env, model, nsteps=5, gamma=0.99, augment=False):
+        super().__init__(env=env, model=model, nsteps=nsteps, augment=augment)
         self.gamma = gamma
         self.batch_action_shape = [x if x is not None else -1 for x in model.train_model.action.shape.as_list()]
         self.ob_dtype = model.train_model.X.dtype.as_numpy_dtype
@@ -26,6 +26,18 @@ class Runner(AbstractEnvRunner):
         for n in range(self.nsteps):
             # Given observations, take action and value (V(s))
             # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
+
+            # @kaahan: add pixel shift here! i.e. pad 4 all sides, then take random crop
+            if self.augment:
+                import random
+                # pad observation 4 pixels in any direction, extending the border
+                obs = self.obs[0]
+                h, w, _ = obs.shape
+                obs = np.pad(obs, pad_width=((4, 4), (4, 4), (0, 0)), mode='edge')
+                x = random.randint(0, obs.shape[1] - w)
+                y = random.randint(0, obs.shape[0] - h)
+                obs = np.expand_dims(obs[y:y + h, x:x + w, :], 0)
+                self.obs = obs
             actions, values, states, _ = self.model.step(self.obs, S=self.states, M=self.dones)
 
             # Append the experiences
