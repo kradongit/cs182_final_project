@@ -1,11 +1,12 @@
-##Installing
-###Anaconda
+## Installing
+
+### Anaconda
 Only Mac and Unix environments currently supported
 
-1. ```conda env create -f {os}_cs182.yaml```, where os can be ``unix`` or ``mac``
+1. ```conda env create -f cs182_{os}.yaml```, where os can be ``unix`` or ``mac``
 2. ```pip install -e ./baselines```
 
-##Training
+## Training
 
 To train a network, you must first create a configuration file and store it in the ``configurations/``
 folder. Examples of configurations can be seen in ``ppo_baseline_cuda.yaml`` and ``ppo_imapala_cuda.yaml``.
@@ -19,7 +20,7 @@ This will save run information to the folder ``runs/example/{current datetime}``
 checkpoints and relevant environment/training information in a .csv format. The same information will be printed
 in the terminal during training. See ``baselines.logger`` for more details.
 
-##Testing
+## Testing
 
 To test a network, you must supply two things:
 1. Location of a pre-trained model i.e. ``runs/example/2020-05-05-10-07/checkpoints/best.ckpt``
