@@ -25,7 +25,7 @@ class Model(object):
     - Save load the model
     """
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
-                nsteps, ent_coef, vf_coef, max_grad_norm, mpi_rank_weight=1, comm=None, microbatch_size=None):
+                nsteps, ent_coef, vf_coef, max_grad_norm, mpi_rank_weight=1, comm=None, microbatch_size=None, augment=None):
         self.sess = sess = get_session()
 
         if MPI is not None and comm is None:
@@ -35,6 +35,8 @@ class Model(object):
             # CREATE OUR TWO MODELS
             # act_model that is used for sampling
             act_model = policy(nbatch_act, 1, sess)
+            if augment:
+                aug_model = policy(augment[0] * augment[1], 1, sess)
 
             # Train model for training
             if microbatch_size is None:
@@ -121,6 +123,12 @@ class Model(object):
         self.step = act_model.step
         self.value = act_model.value
         self.initial_state = act_model.initial_state
+
+        if augment:
+            self.aug_model = aug_model
+            self.aug_step = aug_model.stepnbatch_act
+            self.aug_value = aug_model.value
+            self.aug_initial_state = aug_model.initial_state
 
         self.save = functools.partial(save_variables, sess=sess)
         self.load = functools.partial(load_variables, sess=sess)

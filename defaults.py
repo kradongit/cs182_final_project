@@ -23,10 +23,11 @@ _C.TRAIN.USE_VF_CLIPPING = True
 _C.TRAIN.BATCH_SIZE = 512
 _C.TRAIN.MINIBATCHES = 1
 _C.TRAIN.NUM_EPOCHS = 3
+_C.TRAIN.PRETRAINED = ""
 # total number of actions over all episodes / epochs
 _C.TRAIN.TOTAL_TIMESTEPS = 1_000_000
 _C.TRAIN.POLICY = ""
-_C.TRAIN.AUGMENT = False
+_C.TRAIN.AUGMENT = (0, 0)
 
 # testing defaults
 _C.TEST = CN()

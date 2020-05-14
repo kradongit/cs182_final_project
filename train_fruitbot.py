@@ -131,7 +131,8 @@ def main():
             init_fn=None,
             vf_coef=0.5,
             max_grad_norm=0.5,
-            augment=cfg.TRAIN.AUGMENT
+            augment=cfg.TRAIN.AUGMENT,
+            load_path=cfg.TRAIN.PRETRAINED
         )
 
 
