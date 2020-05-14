@@ -6,6 +6,12 @@ Only Mac and Unix environments currently supported
 1. ```conda env create -f cs182_{os}.yaml```, where os can be ``unix`` or ``mac``
 2. ```pip install -e ./baselines```
 
+### PIP
+
+Only Mac and Unix environment currently supported
+1. Create your virtual environment and activate it
+2. ```pip install -r requirements_{os}.txt```, where os can be ```unix``` or ```mac```
+
 ## Training
 
 To train a network, you must first create a configuration file and store it in the ``configurations/``
