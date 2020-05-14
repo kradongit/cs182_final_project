@@ -30,6 +30,6 @@ The command to test looks like:
 
 ``python test_fruitbot.py --config configurations/example.yaml --model_path runs/example/2020-05-05-10-07/checkpoints/best.ckpt``
 
-See ``defaults.py`` to see testing configuration defaults
+See ``defaults.py`` to see testing configuration defaults; of note are the NUM_LEVELS and LEVEL_SEED configurations -- these along with the model choice uniquely specify a testing instance. We recommend testing across all models with the same LEVEL_SEED to give comparable results.
 
 Results for the above command would be stored in ``runs/example_test/2020-05-05-10-07/``
